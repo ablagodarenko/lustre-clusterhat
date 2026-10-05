@@ -1,0 +1,11 @@
+[Unit]
+Description=Lustre ClusterHAT one-time setup
+ConditionPathExists=!/var/lib/lustre-clusterhat/.initialized
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/lustre-clusterhat/init.sh
+
+[Install]
+WantedBy=multi-user.target

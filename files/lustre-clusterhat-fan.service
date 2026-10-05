@@ -1,0 +1,11 @@
+[Unit]
+Description=Turn on the ClusterHAT controller fan
+After=clusterctrl-init.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/clusterctrl fan on
+
+[Install]
+WantedBy=multi-user.target
