@@ -23,11 +23,11 @@ set -e
 BENCH_MB=${BENCH_MB:-256}
 BENCH_DIR=$CLIENT_MNT/benchmark
 LST_SECS=${LST_SECS:-20}
-# Nodes to run LNet selftest against.  lnet_selftest needs a lot of memory
-# for its bulk buffers: on a node that is serving targets the module can
-# fail to load (and has been seen to oops in its error path), so by
-# default only the standby MDS node, which is idle, is used.
-LST_NODES=${LST_NODES:-${MDS_NODES%% *}}
+# Nodes to run LNet selftest against; none by default.  lnet_selftest needs
+# a lot of memory for its bulk buffers: on a node that is serving targets
+# the module can fail to load, and has been seen to oops in its error path.
+# Name a node here only while it serves nothing.
+LST_NODES=${LST_NODES:-}
 
 mbps() { awk -v mb="$1" -v s="$2" 'BEGIN { printf "%.1f", mb / s }'; }
 now() { date +%s.%N; }

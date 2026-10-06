@@ -6,9 +6,15 @@ into a complete small Lustre cluster:
 | Where | Role |
 |---|---|
 | controller (Pi 4) | boots the image; serves the nodes' root over NFS, hosts the client VMs |
-| p1, p2 (Pi Zero 2 W) | MGS + MDS, active/standby; MGT and MDT mirrored between their SD cards with DRBD |
-| p3, p4 (Pi Zero 2 W) | OSS, one OST each on the local SD card |
+| p1 (Pi Zero 2 W) | MGS + MDS: MDT0000 at home here |
+| p2 (Pi Zero 2 W) | MDS: MDT0001 at home here |
+| p3, p4 (Pi Zero 2 W) | OSS: OST0000 at home on p3, OST0001 on p4 |
 | client1..8 | KVM guests on the controller |
+
+Both MDS nodes and both OSS nodes are active. The Zeros share no storage,
+so every target is a DRBD device mirrored between the SD cards of its pair
+(p1/p2, p3/p4) and either node of the pair can serve it: on request a
+node's targets move to its partner, and back.
 
 The build
 
@@ -70,12 +76,23 @@ sudo lustre-cluster up                # start servers, start and mount clients
 Afterwards:
 
 ```sh
-lustre-cluster servers status
-lustre-cluster servers failover       # move MGT+MDT to the other MDS node
+lustre-cluster servers status         # where each target is, mirror state
+lustre-cluster servers failover 1     # p1's targets (MGS, MDT0000) move to p2
+lustre-cluster servers failover 3 hard  # as if p3 had crashed: OST0000 to p4
+lustre-cluster servers failback       # every target back on its home node
+lustre-cluster throttle on 8          # 8 MB/s of disk I/O, shared between the OSTs
+lustre-cluster throttle off
 lustre-cluster benchmark all
 lustre-cluster down                   # stop clients and servers, power nodes off
 lustre-cluster up
 ```
+
+`throttle on B` divides a band of B MB/s evenly between the OSTs, for
+reads and for writes, so that storage rather than the network is the
+bottleneck and the effect of striping shows. It is Lustre's own request
+limiter (the NRS TBF policy on the OSS I/O service) with clients switched to
+1 MB requests: accurate for streaming I/O, harsher on small files, and per
+OSS node - a node serving both OSTs after a failover gets the whole band.
 
 Clients are `client1`..`client8` at 172.19.180.101-108 with the file system
 on `/mnt/lustre`; from the controller, `ssh -i /root/.ssh/lustre-clusterhat
@@ -93,10 +110,20 @@ system name, partition sizes) can be overridden in
 - **Power the Zeros on one at a time.** The scripts do. Several starting
   together can brown out the controller's USB bus.
 - **Failover is driven from the controller.** There is no cluster manager on
-  the nodes. If the active MDS node does not release its targets in time it
-  is powered off through the ClusterHAT and rejoins as the standby.
+  the nodes; nothing moves unless you ask. A move waits for the pair's
+  mirrors to be in sync and refuses if the partner is down.
+- **MDS moves go through a power cycle.** Unmounting the MGS (and often an
+  MDT) hangs on this Lustre version, waiting for exports that are never
+  released. After `UMOUNT_TIMEOUT` seconds the node is powered off through
+  the ClusterHAT, its partner takes over, and it rejoins as the standby.
+  Expect four to six minutes for an MDS failover or failback, during which
+  clients block and then recover. OSS moves are clean and take seconds.
+- **Mirroring costs throughput and space.** Every write to a target is also
+  sent to its partner over the USB bus all four Zeros share, and each OSS
+  card holds both OSTs: about 6 MB/s for a single writer and 2 x 50 GB.
 - **Throughput.** All four Zeros share one USB 2.0 bus that carries about
-  25 MB/s in total. A single client writes far below that unless
+  25 MB/s in total, for client traffic and mirroring together. With
+  buffered I/O a single client writes far below even that unless
   `llite.*.unstable_stats` is set to 0 in the VM.
 - **Memory.** The Zeros have 512 MB. The node root drops the KMS overlay and
   sets `gpu_mem=16`; with the defaults the MDS fails with -ENOMEM.
@@ -126,28 +153,22 @@ files/                        systemd units and module options for the image
 
 ## Status
 
-Tested on a Pi 4 (8 GB) with a ClusterHAT v2.5 and four Pi Zero 2 W:
+Tested on a Pi 4 (8 GB) with a ClusterHAT v2.5 and four Pi Zero 2 W, with
+Lustre 2.17.59 from master, node kernel 6.12.109+rpt-rpi-v8 and client
+kernel 6.1.0-50-cloud-arm64:
 
-- A full build on the Pi 4 itself (Lustre 2.17.59 from master, node kernel
-  6.12.109+rpt-rpi-v8, client kernel 6.1.0-50-cloud-arm64) produced a
-  7.2 GB image.
-- The image's `/opt/lustre-clusterhat` and `/var/lib/lustre-clusterhat` were
-  copied onto a running controller and exercised there: `init`,
-  `nodes deploy`, `servers start`, `clients start|mount`,
-  `servers failover`, `servers failover hard`, `down` and `up` all worked,
-  with eight clients recovering after each failover.
+- Full builds on the Pi 4 itself.
+- An earlier image (single MDT, no OST mirroring) flashed to a card and
+  booted: first-boot setup, `nodes deploy` and `up` worked.
+- The current layout, with the `cluster/` scripts installed on a running
+  controller: `servers format`, `up`, directories spread over both MDTs,
+  `failover` and `failback` of each MDS node and of the OSS nodes with a
+  client reading and writing after every move, and `throttle`.
 
-- The image was then flashed to a 32 GB card and booted on the Pi 4. The
-  first-boot service ran, the root filesystem grew to the card, and
-  `nodes deploy` followed by `up` brought the cluster up on the existing
-  targets with all eight clients mounted. One Zero did not appear on USB
-  after its first boot and needed a power cycle; `nodes` now retries that.
-  SSH and the serial console were off in that image and have been enabled
-  in the build since.
-
-Not tested: an image built after those last changes, `servers format` from
-this repository's copy of the scripts, a build with the default (newest)
-node kernel, xz compression of the output, and a Pi 5 controller.
+Not tested: an image built with the current layout booted from a card; the
+default account and the SSH and serial settings added after the booted
+image; a build with the default (newest) node kernel; a Pi 5 controller;
+load beyond single-client streaming I/O with the current layout.
 
 Known rough edges of the base image: the bridged controller waits only two
 seconds for a DHCP lease and otherwise falls back to 172.19.181.254, in

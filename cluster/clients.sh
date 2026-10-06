@@ -106,7 +106,8 @@ do_status() {
 cmd=$1; shift || true
 case "$cmd" in
 start)  do_start ${@:-$(all_clients)} ;;
-mount)  do_mount ${@:-$(all_clients)} ;;
+mount)  do_mount ${@:-$(all_clients)}
+        "$(dirname "$(readlink -f "$0")")/throttle.sh" reapply >/dev/null ;;
 umount) do_umount ${@:-$(all_clients)} ;;
 stop)   do_stop ${@:-$(all_clients)} ;;
 status) do_status ;;
