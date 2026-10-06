@@ -129,10 +129,10 @@ fence() {
 	sleep 5
 }
 
-# Power a fenced node back on and let it rejoin DRBD as secondary
+# Power a fenced node back on; an MDS node rejoins DRBD as secondary
 unfence() {
 	local try
-	echo "=== p$1: power on, rejoin DRBD"
+	echo "=== p$1: power on"
 	rpiboot_quirk
 	clusterctrl on p$1
 	for try in $(seq 60); do
@@ -140,7 +140,7 @@ unfence() {
 		sleep 5
 	done
 	node_common $1
-	drbd_up $1
+	case " $MDS_NODES " in *" $1 "*) drbd_up $1 ;; esac
 }
 
 do_format() {
@@ -211,14 +211,26 @@ do_start() {
 	done
 }
 
+# Unmount the OST on a node, with the time limit on the controller for
+# the same reason as in mds_umount.
+oss_umount() {
+	timeout -k 5 $UMOUNT_TIMEOUT ssh $SSH_OPTS root@$NODE_NET.$1 "
+		mountpoint -q /mnt/ost || exit 0
+		umount /mnt/ost
+	" </dev/null
+}
+
+# stop [poweroff]: a node that hangs in umount is no use until it is
+# power cycled; with "poweroff" it is just left off
 do_stop() {
 	local n
-	for n in $OSS_NODES; do node_ssh $n "umount /mnt/ost 2>/dev/null; true"; done
-	for n in $MDS_NODES; do
+	for n in $OSS_NODES $MDS_NODES; do
 		node_ssh $n true 2>/dev/null || continue
-		mds_umount $n && continue
-		# a node stuck in umount is no use until it is power cycled
-		echo "p$n: MGT/MDT did not unmount in time"
+		case " $OSS_NODES " in
+		*" $n "*) oss_umount $n && continue ;;
+		*)        mds_umount $n && continue ;;
+		esac
+		echo "p$n: targets did not unmount in time"
 		fence $n
 		[ "$1" = poweroff ] || unfence $n
 	done
