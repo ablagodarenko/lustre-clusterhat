@@ -63,6 +63,9 @@ grep -q 'usb-storage.quirks=' "$mnt/boot/firmware/cmdline.txt" ||
 # headless access: sshd (there is no account until first boot creates
 # one) and the serial console
 in_root "$mnt" systemctl enable ssh.service
+# no host keys in a published image: they are made on first boot
+rm -f "$mnt"/etc/ssh/ssh_host_*
+in_root "$mnt" systemctl enable regenerate_ssh_host_keys.service
 grep -q '^enable_uart=1' "$mnt/boot/firmware/config.txt" ||
 	printf '\n[all]\nenable_uart=1\n' >> "$mnt/boot/firmware/config.txt"
 # first-boot account: Raspberry Pi OS creates it from userconf.txt on the
