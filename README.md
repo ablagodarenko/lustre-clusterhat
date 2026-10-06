@@ -43,7 +43,7 @@ Settings are in `config.sh`; put overrides in `config-local.sh`, for example:
 LUSTRE_REF=v2_17_0                  # tag, branch or commit
 NODE_KREL=6.12.109+rpt-rpi-v8       # pin the node kernel
 COMPRESS=no
-SERIAL_AUTOLOGIN=yes                # passwordless login on the serial console
+SERIAL_AUTOLOGIN=no                 # ask for a login on the serial console
 DEFAULT_USER=                       # no built-in account: prompt on first boot
 ```
 
@@ -54,7 +54,8 @@ stops if no ldiskfs module comes out.
 
 Flash it to the controller's card or SSD. It boots unattended: the first
 boot creates the user `lustre` with password `lustre` (sudo without a
-password), and SSH and the serial console on GPIO 14/15 are enabled.
+password), and SSH and the serial console on GPIO 14/15 (115200 baud,
+logged in automatically) are enabled.
 **Change the password** with `passwd` unless the controller stays on a
 network you trust; anyone who can reach it can log in. Settings made with
 Raspberry Pi Imager override the built-in account. Put an SD card in each
