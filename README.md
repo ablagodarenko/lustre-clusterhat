@@ -99,6 +99,18 @@ system name, partition sizes) can be overridden in
 - **Do not upgrade the node or VM kernel.** The Lustre modules only load on
   the kernels they were built for; the node kernel package is held.
 
+## Releasing an image
+
+A built image carries no keys, accounts or host-specific files: the
+controller's SSH key and every machine's host keys are created on first
+boot. An image that has been booted does, so publish only what comes out of
+`out/`. `out/` also gets a `.sha256` file for the image.
+
+The image contains GPL-licensed binaries built from the sources named in
+`/etc/lustre-clusterhat-release` inside it (Lustre commit, e2fsprogs tag,
+kernel releases); this repository at the matching tag is the way to rebuild
+them. Say which tag an image was built from when you publish it.
+
 ## Layout
 
 ```

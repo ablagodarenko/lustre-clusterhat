@@ -24,8 +24,26 @@ in_root "$T" apt-mark hold linux-image-$krel linux-image-rpi-v8
 debs=$(cd "$PKGS" && ls e2fsprogs/*.deb server/*.deb |
        grep -vE -- '-dbgsym_|-dev_|-udeb_|e2fsck-static|fuse2fs|fuseext2|lustre-source|lustre-tests|lustre-iokit|lustre-client|lustre-resource' |
        sed 's|^|/mnt/pkgs/|')
-in_root "$T" apt-get install -y --allow-downgrades $debs
+# no recommends: lustre-server-modules recommends "linux-image", which
+# apt satisfies with an old, unrelated kernel package
+in_root "$T" apt-get install -y --allow-downgrades --no-install-recommends $debs
 in_root "$T" depmod -a $krel
+
+# the nodes boot exactly one kernel: drop the others (the Pi 5 flavour,
+# the image's original kernel) and all kernel headers
+extra=$(in_root "$T" dpkg-query -W -f '${Package}\n' 'linux-image-*' \
+		'linux-headers-*' 'raspberrypi-kernel*' 2>/dev/null |
+	grep -v -x -e "linux-image-$krel" -e linux-image-rpi-v8 || true)
+# a kernel package refuses to be removed, by default, when its version is
+# the one the build host happens to be running
+for pkg in $extra; do
+	case $pkg in linux-image-[0-9]*)
+		v=${pkg#linux-image-}
+		echo "$pkg $pkg/prerm/removing-running-kernel-$v boolean false" |
+			in_root "$T" debconf-set-selections ;;
+	esac
+done
+[ -z "$extra" ] || in_root "$T" apt-get purge -y $extra
 in_root "$T" apt-get clean
 
 # the kernel postinst put the new kernel and initramfs in /boot/firmware,
@@ -52,4 +70,6 @@ grep -q 'cma=' "$T/boot/firmware/cmdline.txt" ||
 
 chroot_close "$T"
 rmdir "$T/mnt/pkgs" 2>/dev/null || true
+slim_root "$T"
+[ "$(ls "$T/lib/modules")" = "$krel" ] || die "unexpected kernels left: $(ls "$T/lib/modules" | tr '\n' ' ')"
 du -sh "$T"

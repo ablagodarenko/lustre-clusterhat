@@ -37,6 +37,8 @@ VM_DISK=${VM_DISK:-2G}
 IMAGE_SLACK_MB=${IMAGE_SLACK_MB:-1024}
 # xz-compress the finished image (slow on a Pi): yes or no
 COMPRESS=${COMPRESS:-yes}
+# GitHub release assets must stay under 2 GiB
+XZ_LEVEL=${XZ_LEVEL:-6}
 
 # The controller is meant to run headless: sshd is enabled and the serial
 # console (GPIO 14/15, 115200) is switched on.  SERIAL_AUTOLOGIN=yes also

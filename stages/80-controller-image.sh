@@ -15,7 +15,7 @@ mnt=$WORK/mnt
 [ -s "$VMOUT/base.img" ] || die "client image missing: run stage 70"
 
 mkdir -p "$OUT" "$mnt"
-rm -f "$img" "$img.xz"
+rm -f "$img" "$img.xz" "$img.sha256" "$img.xz.sha256"
 log "unpacking controller image to $img"
 xz -dc "$(fetch "$CTRL_IMAGE_URL")" > "$img"
 
@@ -80,12 +80,17 @@ BASE_IMAGE=${CTRL_IMAGE_URL##*/}
 BUILT=$(date -u +%Y-%m-%dT%H:%MZ)
 E
 
+chroot_restore "$mnt"
+slim_root "$mnt"
 df -h "$mnt" | tail -1
-chroot_close "$mnt"
+# hand freed blocks back so they compress to nothing
+fstrim "$mnt" 2>/dev/null || true
+cleanup
 
 if [ "$COMPRESS" = yes ]; then
 	log "compressing"
-	xz -T0 -3 "$img"
+	xz -T0 -$XZ_LEVEL "$img"
 	img=$img.xz
 fi
-ls -lh "$img"
+(cd "$OUT" && sha256sum "${img##*/}" > "${img##*/}.sha256")
+ls -lh "$img" "$img.sha256"

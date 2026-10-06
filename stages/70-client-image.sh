@@ -27,6 +27,8 @@ cat > "$R/usr/local/sbin/rpi-client-id" <<E
 n=\$(sed -n 's/.*rpi\.client=\([0-9]*\).*/\1/p' /proc/cmdline)
 [ -n "\$n" ] || exit 0
 hostname client\$n
+# the image ships without host keys, so no two installations share them
+ssh-keygen -A >/dev/null
 ip link set eth0 up
 ip addr add $NODE_NET.\$(($VM_IPBASE + n))/24 dev eth0
 E
@@ -53,6 +55,15 @@ mkdir -p "$R$CLIENT_MNT"
 
 chroot_close "$R"
 rmdir "$R/mnt/pkgs" 2>/dev/null || true
+slim_root "$R"
+
+# nothing of the build host, and nothing every copy of the image would
+# share: debootstrap copies the host's hostname and resolv.conf, and
+# installing openssh-server generates host keys
+echo client > "$R/etc/hostname"
+rm -f "$R/etc/resolv.conf" "$R"/etc/ssh/ssh_host_*
+: > "$R/etc/machine-id"
+rm -f "$R/var/lib/dbus/machine-id"
 
 cp "$R/boot/vmlinuz-$krel" "$VMOUT/vmlinuz"
 cp "$R/boot/initrd.img-$krel" "$VMOUT/initrd.img"

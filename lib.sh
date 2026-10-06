@@ -65,12 +65,38 @@ chroot_open() {
 	# keep package scripts from starting services on the build host
 	printf '#!/bin/sh\nexit 101\n' > "$root/usr/sbin/policy-rc.d"
 	chmod 755 "$root/usr/sbin/policy-rc.d"
-	cp /etc/resolv.conf "$root/etc/resolv.conf" 2>/dev/null || true
+	# name resolution for apt inside the chroot: borrow the build host's
+	# resolv.conf, and put the root's own back in chroot_close so the
+	# host's does not end up in an image
+	if [ ! -e "$root/etc/resolv.conf.lch-orig" ] && [ ! -L "$root/etc/resolv.conf.lch-orig" ]; then
+		if [ -e "$root/etc/resolv.conf" ] || [ -L "$root/etc/resolv.conf" ]; then
+			mv "$root/etc/resolv.conf" "$root/etc/resolv.conf.lch-orig"
+		else
+			: > "$root/etc/resolv.conf.lch-none"
+		fi
+	fi
+	cp /etc/resolv.conf "$root/etc/resolv.conf"
+}
+
+# undo what chroot_open changed inside the root, leaving it mounted
+chroot_restore() {
+	local root=$1
+	rm -f "$root/usr/sbin/policy-rc.d" "$root/etc/resolv.conf"
+	if [ -e "$root/etc/resolv.conf.lch-orig" ] || [ -L "$root/etc/resolv.conf.lch-orig" ]; then
+		mv "$root/etc/resolv.conf.lch-orig" "$root/etc/resolv.conf"
+	fi
+	rm -f "$root/etc/resolv.conf.lch-none"
 }
 
 chroot_close() {
-	rm -f "$1/usr/sbin/policy-rc.d"
+	chroot_restore "$1"
 	cleanup
+}
+
+# drop what only costs space in an image
+slim_root() {
+	rm -rf "$1"/var/lib/apt/lists/* "$1"/var/cache/apt/archives/*.deb \
+		"$1"/var/log/apt/* "$1"/var/log/dpkg.log
 }
 
 # bind a host directory into an open chroot
