@@ -65,6 +65,14 @@ grep -q 'usb-storage.quirks=' "$mnt/boot/firmware/cmdline.txt" ||
 in_root "$mnt" systemctl enable ssh.service
 grep -q '^enable_uart=1' "$mnt/boot/firmware/config.txt" ||
 	printf '\n[all]\nenable_uart=1\n' >> "$mnt/boot/firmware/config.txt"
+# first-boot account: Raspberry Pi OS creates it from userconf.txt on the
+# boot partition and skips its interactive prompt
+rm -f "$mnt/boot/firmware/userconf.txt"
+if [ -n "$DEFAULT_USER" ]; then
+	hash=$(in_root "$mnt" openssl passwd -6 "$DEFAULT_PASSWORD")
+	[ -n "$hash" ] || die "could not hash the default password"
+	echo "$DEFAULT_USER:$hash" > "$mnt/boot/firmware/userconf.txt"
+fi
 if [ "$SERIAL_AUTOLOGIN" = yes ]; then
 	install -D -m 644 "$TOP/files/serial-autologin.conf" \
 		"$mnt/etc/systemd/system/serial-getty@.service.d/autologin.conf"
@@ -77,6 +85,7 @@ E2FSPROGS=$E2FS_TAG
 NODE_KERNEL=$krel
 CLIENT_KERNEL=$(cat "$PKGS/client/KERNEL_RELEASE")
 BASE_IMAGE=${CTRL_IMAGE_URL##*/}
+DEFAULT_USER=$DEFAULT_USER
 BUILT=$(date -u +%Y-%m-%dT%H:%MZ)
 E
 

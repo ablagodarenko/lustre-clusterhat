@@ -40,6 +40,14 @@ COMPRESS=${COMPRESS:-yes}
 # GitHub release assets must stay under 2 GiB
 XZ_LEVEL=${XZ_LEVEL:-6}
 
+# Account created on the controller's first boot, so that it comes up
+# without anyone at the console.  The password is public knowledge and sshd
+# is enabled: change it (passwd) once the controller is on a network you do
+# not control.  Set DEFAULT_USER empty to get Raspberry Pi OS's own
+# first-boot prompt (or Raspberry Pi Imager's settings) instead.
+DEFAULT_USER=${DEFAULT_USER-lustre}
+DEFAULT_PASSWORD=${DEFAULT_PASSWORD-lustre}
+
 # The controller is meant to run headless: sshd is enabled and the serial
 # console (GPIO 14/15, 115200) is switched on.  SERIAL_AUTOLOGIN=yes also
 # logs the first user in on that console without a password - convenient

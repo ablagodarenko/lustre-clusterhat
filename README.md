@@ -44,6 +44,7 @@ LUSTRE_REF=v2_17_0                  # tag, branch or commit
 NODE_KREL=6.12.109+rpt-rpi-v8       # pin the node kernel
 COMPRESS=no
 SERIAL_AUTOLOGIN=yes                # passwordless login on the serial console
+DEFAULT_USER=                       # no built-in account: prompt on first boot
 ```
 
 Lustre must have an ldiskfs patch series for the node kernel; the build
@@ -51,9 +52,12 @@ stops if no ldiskfs module comes out.
 
 ## Using the image
 
-Flash it to the controller's card or SSD (set the user and network with
-Raspberry Pi Imager as for any Raspberry Pi OS image; SSH and the serial
-console on GPIO 14/15 are already enabled). Put an SD card in each
+Flash it to the controller's card or SSD. It boots unattended: the first
+boot creates the user `lustre` with password `lustre` (sudo without a
+password), and SSH and the serial console on GPIO 14/15 are enabled.
+**Change the password** with `passwd` unless the controller stays on a
+network you trust; anyone who can reach it can log in. Settings made with
+Raspberry Pi Imager override the built-in account. Put an SD card in each
 Zero, **formatted FAT with no files on it** (see below), and boot the
 controller. Then, on the controller:
 
