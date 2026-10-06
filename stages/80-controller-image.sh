@@ -60,6 +60,16 @@ install -m 644 "$TOP/files/usb-storage-rpiboot.conf" "$mnt/etc/modprobe.d/"
 grep -q 'usb-storage.quirks=' "$mnt/boot/firmware/cmdline.txt" ||
 	sed -i '1s/$/ usb-storage.quirks=0a5c:2764:i/' "$mnt/boot/firmware/cmdline.txt"
 
+# headless access: sshd (there is no account until first boot creates
+# one) and the serial console
+in_root "$mnt" systemctl enable ssh.service
+grep -q '^enable_uart=1' "$mnt/boot/firmware/config.txt" ||
+	printf '\n[all]\nenable_uart=1\n' >> "$mnt/boot/firmware/config.txt"
+if [ "$SERIAL_AUTOLOGIN" = yes ]; then
+	install -D -m 644 "$TOP/files/serial-autologin.conf" \
+		"$mnt/etc/systemd/system/serial-getty@.service.d/autologin.conf"
+fi
+
 cat > "$mnt/etc/lustre-clusterhat-release" <<E
 LUSTRE=$lver
 LUSTRE_REF=$LUSTRE_REF

@@ -38,4 +38,10 @@ IMAGE_SLACK_MB=${IMAGE_SLACK_MB:-1024}
 # xz-compress the finished image (slow on a Pi): yes or no
 COMPRESS=${COMPRESS:-yes}
 
+# The controller is meant to run headless: sshd is enabled and the serial
+# console (GPIO 14/15, 115200) is switched on.  SERIAL_AUTOLOGIN=yes also
+# logs the first user in on that console without a password - convenient
+# for scripting it, but anyone with access to the pins gets a shell.
+SERIAL_AUTOLOGIN=${SERIAL_AUTOLOGIN:-no}
+
 JOBS=${JOBS:-$(nproc)}

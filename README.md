@@ -43,6 +43,7 @@ Settings are in `config.sh`; put overrides in `config-local.sh`, for example:
 LUSTRE_REF=v2_17_0                  # tag, branch or commit
 NODE_KREL=6.12.109+rpt-rpi-v8       # pin the node kernel
 COMPRESS=no
+SERIAL_AUTOLOGIN=yes                # passwordless login on the serial console
 ```
 
 Lustre must have an ldiskfs patch series for the node kernel; the build
@@ -50,8 +51,9 @@ stops if no ldiskfs module comes out.
 
 ## Using the image
 
-Flash it to the controller's card or SSD (set user, SSH and network with
-Raspberry Pi Imager as for any Raspberry Pi OS image). Put an SD card in each
+Flash it to the controller's card or SSD (set the user and network with
+Raspberry Pi Imager as for any Raspberry Pi OS image; SSH and the serial
+console on GPIO 14/15 are already enabled). Put an SD card in each
 Zero, **formatted FAT with no files on it** (see below), and boot the
 controller. Then, on the controller:
 
