@@ -66,8 +66,8 @@ OST_PART=${SD_DEV}p3
 
 LNET_IF=${LNET_IF:-usb0.10}
 CLIENT_MNT=${CLIENT_MNT:-/mnt/lustre}
-# how long a server may take to unmount a target before it gets fenced
-UMOUNT_TIMEOUT=${UMOUNT_TIMEOUT:-90}
+# how long an MDS node may take to unmount MGT and MDT before it gets fenced
+UMOUNT_TIMEOUT=${UMOUNT_TIMEOUT:-120}
 
 node_nid() { echo "$NODE_NET.$1@tcp"; }
 

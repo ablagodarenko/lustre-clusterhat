@@ -7,7 +7,8 @@
 #                        up DRBD between the MDS nodes, mkfs.lustre
 #   servers.sh start     mount MGT+MDT on the first MDS node (or on the
 #                        node that is DRBD primary), then the OSTs
-#   servers.sh stop      unmount everything
+#   servers.sh stop      unmount everything; an MDS node that hangs in
+#                        umount is power cycled ("stop poweroff": left off)
 #   servers.sh failover [hard]
 #                        move MGT+MDT to the other MDS node; if the active
 #                        node does not release them in time (or with
@@ -18,7 +19,7 @@ set -e
 
 . "$(dirname "$(readlink -f "$0")")/config.sh"
 
-cmd=$1
+cmd=$1 arg=$2
 set -- $MDS_NODES; MDS1=$1; MDS2=$2
 MGT_DEV=/dev/drbd0
 MDT_DEV=/dev/drbd1
@@ -107,16 +108,18 @@ mds_mount() {
 }
 
 # Give up MGT+MDT on a node.  Fails if the node cannot be reached or does
-# not finish in time, in which case the caller has to fence it.
+# not finish in time, in which case the caller has to fence it.  The time
+# limit is enforced here, on the controller: a stuck umount on the node
+# sleeps uninterruptibly and cannot be timed out or killed there.
 mds_umount() {
-	node_ssh $1 "
+	timeout -k 5 $UMOUNT_TIMEOUT ssh $SSH_OPTS root@$NODE_NET.$1 "
 		for m in /mnt/mdt /mnt/mgt; do
 			mountpoint -q \$m || continue
-			timeout $UMOUNT_TIMEOUT umount \$m || exit 1
+			umount \$m || exit 1
 		done
 		drbdadm status >/dev/null 2>&1 || exit 0
 		drbdadm secondary all
-	"
+	" </dev/null
 }
 
 # Power a node off so it cannot write to the shared (DRBD) devices any more
@@ -212,7 +215,12 @@ do_stop() {
 	local n
 	for n in $OSS_NODES; do node_ssh $n "umount /mnt/ost 2>/dev/null; true"; done
 	for n in $MDS_NODES; do
-		mds_umount $n || echo "p$n: MGT/MDT did not unmount cleanly"
+		node_ssh $n true 2>/dev/null || continue
+		mds_umount $n && continue
+		# a node stuck in umount is no use until it is power cycled
+		echo "p$n: MGT/MDT did not unmount in time"
+		fence $n
+		[ "$1" = poweroff ] || unfence $n
 	done
 }
 
@@ -254,8 +262,8 @@ do_status() {
 case "$cmd" in
 format)   do_format ;;
 start)    do_start ;;
-stop)     do_stop ;;
-failover) do_failover "$2" ;;
+stop)     do_stop "$arg" ;;
+failover) do_failover "$arg" ;;
 status)   do_status ;;
-*)        sed -n '3,18p' "$0"; exit 1 ;;
+*)        sed -n '3,19p' "$0"; exit 1 ;;
 esac

@@ -30,7 +30,7 @@ in_root "$T" apt-get clean
 
 # the kernel postinst put the new kernel and initramfs in /boot/firmware,
 # which rpiboot serves to the node: check it really is the one we want
-zcat -f "$T/boot/firmware/kernel8.img" | strings | grep -q "Linux version $krel " ||
+zcat -f "$T/boot/firmware/kernel8.img" | strings | grep -c "Linux version $krel " >/dev/null ||
 	die "node boot kernel is not $krel"
 
 # sshd on; the controller's key is added by "lustre-cluster init"

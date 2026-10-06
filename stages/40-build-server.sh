@@ -28,7 +28,7 @@ chroot_close "$BUILDROOT"
 
 # configure quietly drops ldiskfs if it has no patch series for the kernel
 dpkg -c "$BUILDROOT"/build/lustre/debs/lustre-server-modules-*.deb |
-	grep -q 'ldiskfs\.ko' || die "no ldiskfs module built for $krel"
+	grep -c 'ldiskfs\.ko' >/dev/null || die "no ldiskfs module built for $krel"
 
 rm -f "$PKGS"/server/*
 cp "$BUILDROOT"/build/lustre/debs/*.deb "$PKGS/server/"

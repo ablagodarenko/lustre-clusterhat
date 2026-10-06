@@ -108,6 +108,18 @@ files/                        systemd units and module options for the image
 
 ## Status
 
-The cluster scripts in `cluster/` come from a working deployment (Lustre
-2.17.59 on kernel 6.12.109, eight clients, MDS failover exercised). See the
-commit history for what has and has not been tested as an image.
+Tested on a Pi 4 (8 GB) with a ClusterHAT v2.5 and four Pi Zero 2 W:
+
+- A full build on the Pi 4 itself (Lustre 2.17.59 from master, node kernel
+  6.12.109+rpt-rpi-v8, client kernel 6.1.0-50-cloud-arm64) produced a
+  7.2 GB image.
+- The image's `/opt/lustre-clusterhat` and `/var/lib/lustre-clusterhat` were
+  copied onto a running controller and exercised there: `init`,
+  `nodes deploy`, `servers start`, `clients start|mount`,
+  `servers failover`, `servers failover hard`, `down` and `up` all worked,
+  with eight clients recovering after each failover.
+
+Not tested: booting the image itself on a freshly flashed controller (so its
+first-boot service and boot settings are unverified), `servers format` from
+this repository's copy of the scripts, a build with the default (newest)
+node kernel, xz compression of the output, and a Pi 5 controller.

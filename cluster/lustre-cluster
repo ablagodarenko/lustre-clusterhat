@@ -24,7 +24,7 @@ nodes|servers|clients|benchmark)
 up)         "$D/nodes.sh" on && "$D/servers.sh" start &&
             "$D/clients.sh" start && "$D/clients.sh" mount ;;
 down)       "$D/clients.sh" stop
-            "$D/servers.sh" stop
+            "$D/servers.sh" stop poweroff
             "$D/nodes.sh" off ;;
 *)          sed -n '3,14p' "$0"; exit 1 ;;
 esac

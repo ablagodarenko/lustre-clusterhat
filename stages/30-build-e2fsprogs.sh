@@ -17,9 +17,10 @@ chroot_open "$BUILDROOT"
 in_root "$BUILDROOT" bash -ec '
 	cd /build/e2fs/e2fsprogs
 	DEB_BUILD_OPTIONS="nocheck parallel=$JOBS" dpkg-buildpackage -b -us -uc -d
-	# the Lustre build links against these
+	# The Lustre build links against the libraries.  e2fsprogs itself
+	# has to come along: the stock one pins the stock library version.
 	apt-get install -y --allow-downgrades $(ls ../*.deb | grep -E \
-		"/(libcom-err2|comerr-dev|libext2fs2[a-z0-9]*|libext2fs-dev|libss2|ss-dev)_")
+		"/(e2fsprogs|logsave|libcom-err2|comerr-dev|libext2fs2[a-z0-9]*|libext2fs-dev|libss2|ss-dev)_")
 '
 chroot_close "$BUILDROOT"
 
