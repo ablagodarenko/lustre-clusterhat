@@ -121,7 +121,18 @@ Tested on a Pi 4 (8 GB) with a ClusterHAT v2.5 and four Pi Zero 2 W:
   `servers failover`, `servers failover hard`, `down` and `up` all worked,
   with eight clients recovering after each failover.
 
-Not tested: booting the image itself on a freshly flashed controller (so its
-first-boot service and boot settings are unverified), `servers format` from
+- The image was then flashed to a 32 GB card and booted on the Pi 4. The
+  first-boot service ran, the root filesystem grew to the card, and
+  `nodes deploy` followed by `up` brought the cluster up on the existing
+  targets with all eight clients mounted. One Zero did not appear on USB
+  after its first boot and needed a power cycle; `nodes` now retries that.
+  SSH and the serial console were off in that image and have been enabled
+  in the build since.
+
+Not tested: an image built after those last changes, `servers format` from
 this repository's copy of the scripts, a build with the default (newest)
 node kernel, xz compression of the output, and a Pi 5 controller.
+
+Known rough edges of the base image: the bridged controller waits only two
+seconds for a DHCP lease and otherwise falls back to 172.19.181.254, in
+which case it has no IPv4 address on the LAN, no DNS and the wrong time.

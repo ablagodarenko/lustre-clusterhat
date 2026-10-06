@@ -13,11 +13,21 @@ set -e
 
 . "$(dirname "$(readlink -f "$0")")/config.sh"
 
+# Wait for a node to answer on ssh.  A Zero occasionally fails to show up
+# on USB after a (re)boot and stays that way: power cycle it once before
+# giving up.
 wait_ssh() {
-	local n=$1 try
-	for try in $(seq 60); do
-		node_ssh $n true 2>/dev/null && return 0
-		sleep 10
+	local n=$1 try attempt
+	for attempt in 1 2; do
+		for try in $(seq 30); do
+			node_ssh $n true 2>/dev/null && return 0
+			sleep 10
+		done
+		[ $attempt = 1 ] || break
+		echo "p$n did not come up, power cycling it"
+		clusterctrl off p$n
+		sleep 5
+		power_on $n
 	done
 	echo "p$n did not come up"
 	return 1
