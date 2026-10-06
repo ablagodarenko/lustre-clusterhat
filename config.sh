@@ -49,10 +49,9 @@ DEFAULT_USER=${DEFAULT_USER-lustre}
 DEFAULT_PASSWORD=${DEFAULT_PASSWORD-lustre}
 
 # The controller is meant to run headless: sshd is enabled and the serial
-# console (GPIO 14/15, 115200) is switched on.  By default the first user
-# is logged in on that console without a password, which lets scripts
-# drive it; anyone with access to the pins gets a shell.  "no" asks for
-# a login as usual.
-SERIAL_AUTOLOGIN=${SERIAL_AUTOLOGIN:-yes}
+# console (GPIO 14/15, 115200) is switched on.  SERIAL_AUTOLOGIN=yes also
+# logs the first user in on that console without a password - convenient
+# for scripting it, but anyone with access to the pins gets a shell.
+SERIAL_AUTOLOGIN=${SERIAL_AUTOLOGIN:-no}
 
 JOBS=${JOBS:-$(nproc)}
