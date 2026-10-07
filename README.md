@@ -190,11 +190,132 @@ OSS node - a node serving both OSTs after a failover gets the whole band.
 `man lustre-cluster` and `man lustre-clusterhat.conf` on the controller
 describe every command and setting.
 
-Clients are `client1`..`client8` at 172.19.180.101-108 with the file system
-on `/mnt/lustre`; from the controller, `ssh -i /root/.ssh/lustre-clusterhat
-root@172.19.180.101`. Runtime settings (number and size of clients, file
-system name, partition sizes) can be overridden in
-`/etc/lustre-clusterhat.conf`; the defaults are in `cluster/config.sh`.
+## Working with the file system from a client
+
+The clients are `client1`..`client8` at 172.19.180.101-108, small Debian
+virtual machines on the controller with the file system mounted on
+`/mnt/lustre`. Log in from the controller, as root:
+
+```sh
+sudo ssh -i /root/.ssh/lustre-clusterhat root@172.19.180.101
+```
+
+A client is rebuilt from the image every time it is started, so keep
+nothing outside `/mnt/lustre`. The Lustre tools are `lfs`, for everything
+about files and directories, and `lctl`, for the client's own state.
+
+**Look around.** One line per target, MDTs first, then OSTs:
+
+```sh
+lfs df -h /mnt/lustre        # space
+lfs df -i /mnt/lustre        # inodes
+```
+
+**One file system, many clients.** Write on one client, read on another:
+
+```sh
+# on client1
+dd if=/dev/urandom of=/mnt/lustre/hello.bin bs=1M count=32 conv=fsync
+md5sum /mnt/lustre/hello.bin
+
+# on client8: the same checksum
+md5sum /mnt/lustre/hello.bin
+```
+
+**Where a file's data is.** A file is stored as objects on one or more OSTs;
+the layout is chosen when the file is created and can be set per file or
+inherited from a directory:
+
+```sh
+cd /mnt/lustre
+lfs setstripe -c 1 -i 0 one          # one stripe, on OST0000
+lfs setstripe -c 2 -S 1M two         # striped over both OSTs, 1 MB pieces
+dd if=/dev/zero of=one bs=1M count=64 oflag=direct
+dd if=/dev/zero of=two bs=1M count=64 oflag=direct
+lfs getstripe one two                # the layouts, and the objects on each OST
+
+mkdir striped && lfs setstripe -c 2 striped   # new files in here get two stripes
+```
+
+**Where a directory's metadata is.** There are two MDTs. New top-level
+directories are spread over them automatically; you can also choose:
+
+```sh
+mkdir a b c d
+for d in a b c d; do echo "$d is on MDT$(lfs getdirstripe -m $d)"; done
+lfs mkdir -i 1 on-mdt1               # create a directory on MDT0001
+```
+
+**See striping pay off.** Unthrottled, the USB bus is the bottleneck and
+striping changes little. Give each OST a fixed, small share of disk
+bandwidth and a two-stripe file reads at twice the speed of a one-stripe
+file:
+
+```sh
+# on the controller
+sudo lustre-cluster throttle on 8    # 4 MB/s per OST
+
+# on a client, with the files from above
+dd if=one of=/dev/null bs=1M iflag=direct     # about 4 MB/s
+dd if=two of=/dev/null bs=1M iflag=direct     # about 8 MB/s
+
+# on the controller
+sudo lustre-cluster throttle off
+```
+
+**Watch a failover from the client's side.** Start something that keeps
+touching the file system, then move a server on the controller. The loop
+pauses while the target is away and carries on once it is back; nothing
+fails:
+
+```sh
+# on a client
+while true; do date >> /mnt/lustre/a/heartbeat; tail -1 /mnt/lustre/a/heartbeat; sleep 1; done
+
+# on the controller: OST0000 to p4 (seconds), or MGS and MDT0000 to p2 (minutes)
+sudo lustre-cluster servers failover 3
+sudo lustre-cluster servers failover 1
+sudo lustre-cluster servers failback
+```
+
+Which server the client is talking to for MDT0000, before and after:
+
+```sh
+lctl get_param mdc.*MDT0000*.import | grep -E 'current_connection|state:'
+```
+
+**Buffered writes are slow by default.** A client counts pages the server has
+not committed yet against its dirty-page limit, and these clients have
+little memory, so a plain `dd` or `cp` crawls at 2-3 MB/s. Direct I/O
+(`oflag=direct`, as above) avoids it; so does turning the accounting off,
+until the client is restarted:
+
+```sh
+lctl set_param llite.*.unstable_stats=0
+```
+
+**Measure without the cache.** To read from the servers rather than from the
+client's memory, drop the cache first:
+
+```sh
+sync; echo 3 > /proc/sys/vm/drop_caches
+```
+
+Several clients at once, from the controller:
+
+```sh
+for n in 1 2 3 4; do
+    sudo ssh -i /root/.ssh/lustre-clusterhat root@172.19.180.10$n \
+        "dd if=/dev/zero of=/mnt/lustre/load.$n bs=1M count=64 oflag=direct 2>&1 | tail -1" &
+done; wait
+```
+
+`sudo lustre-cluster benchmark io` does this for 1 to 8 clients and prints
+the totals.
+
+Runtime settings on the controller (number and size of clients, file system
+name, partition sizes) can be overridden in `/etc/lustre-clusterhat.conf`;
+the defaults are in `cluster/config.sh`.
 
 ## Things worth knowing
 
