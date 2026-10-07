@@ -54,9 +54,9 @@ DEFAULT_PASSWORD=${DEFAULT_PASSWORD-lustre}
 # for scripting it, but anyone with access to the pins gets a shell.
 SERIAL_AUTOLOGIN=${SERIAL_AUTOLOGIN:-no}
 
-# Let the controller install newer lustre-cluster scripts from the
-# repository by itself, a few minutes after boot and once a day.  "no"
-# leaves that to "lustre-cluster update".
-AUTO_UPDATE=${AUTO_UPDATE:-yes}
+# "lustre-cluster update" installs newer scripts from the repository on
+# request.  AUTO_UPDATE=yes makes the controller do that by itself, a few
+# minutes after boot and once a day.
+AUTO_UPDATE=${AUTO_UPDATE:-no}
 
 JOBS=${JOBS:-$(nproc)}

@@ -123,7 +123,7 @@ NODE_KREL=6.12.109+rpt-rpi-v8       # pin the node kernel
 COMPRESS=no
 SERIAL_AUTOLOGIN=yes                # passwordless login on the serial console
 DEFAULT_USER=                       # no built-in account: prompt on first boot
-AUTO_UPDATE=no                      # do not update the scripts automatically
+AUTO_UPDATE=yes                     # update the scripts automatically, daily
 ```
 
 Lustre must have an ldiskfs patch series for the node kernel; the build
@@ -160,11 +160,7 @@ lustre-cluster down                   # stop clients and servers, power nodes of
 lustre-cluster up
 ```
 
-The controller keeps its `lustre-cluster` scripts current by itself: a few
-minutes after boot and once a day it installs what is on this repository's
-`main` branch, if that is newer (`systemctl disable --now
-lustre-clusterhat-update.timer` turns this off, `journalctl -u
-lustre-clusterhat-update` shows what it did). By hand:
+To pick up newer `lustre-cluster` scripts without reflashing:
 
 ```sh
 lustre-cluster update status          # installed revision, and the repository's
@@ -178,6 +174,11 @@ units from this repository (the previous ones are kept in
 does not change Lustre, the kernels, the node root or the client image,
 which are built into the image. The controller needs internet access; set
 `UPDATE_REPO` in `/etc/lustre-clusterhat.conf` to use a fork.
+
+To have the controller do this by itself, a few minutes after boot and once
+a day: `sudo systemctl enable --now lustre-clusterhat-update.timer`
+(`journalctl -u lustre-clusterhat-update` shows what it did). An image built
+with `AUTO_UPDATE=yes` has that enabled from the start.
 
 `throttle on B` divides a band of B MB/s evenly between the OSTs, for
 reads and for writes, so that storage rather than the network is the
