@@ -1,0 +1,154 @@
+.TH LUSTRE-CLUSTERHAT.CONF 5 "2026-10-07" "lustre-clusterhat" "File Formats"
+.SH NAME
+lustre-clusterhat.conf \- settings for lustre-cluster
+.SH SYNOPSIS
+.I /etc/lustre-clusterhat.conf
+.SH DESCRIPTION
+.BR lustre-cluster (8)
+reads
+.I /etc/lustre-clusterhat.conf
+every time it runs.
+The file does not exist by default; every setting has a built-in value.
+.PP
+The file is a shell fragment: one
+.IB NAME = value
+per line, no spaces around the equals sign, values containing spaces in
+quotes, and comments starting with
+.BR # .
+The same variables set in the environment are overridden by the file.
+.PP
+Settings marked
+.I format
+describe what is on the SD cards.
+Change them only before
+.BR "lustre-cluster servers format" ;
+changing them afterwards makes the commands look for targets that are not
+there.
+.SH SETTINGS
+.SS Nodes
+.TP
+.BR NODES " (default: " "\(dq1 2 3 4\(dq" )
+The ClusterHAT slots in use.
+.TP
+.BR MDS_NODES " (default: " "\(dq1 2\(dq" ", " \fIformat\fR )
+The pair of metadata server nodes.
+The MGS and MDT0000 are at home on the first, MDT0001 on the second.
+.TP
+.BR OSS_NODES " (default: " "\(dq3 4\(dq" ", " \fIformat\fR )
+The pair of object storage server nodes.
+OST0000 is at home on the first, OST0001 on the second.
+.TP
+.BR NODE_NET " (default: " 172.19.180 )
+First three octets of the network between controller, nodes and clients.
+Node
+.RI p N
+is at
+.IR NODE_NET . N ,
+the controller at
+.IR NODE_NET .254.
+The ClusterHAT software and the client image are built for the default;
+this is here to be read, not changed.
+.TP
+.BR LNET_IF " (default: " usb0.10 )
+Network interface on the nodes that LNet uses.
+.SS File system
+.TP
+.BR FSNAME " (default: " rpifs ", " \fIformat\fR )
+Name of the Lustre file system, at most eight characters.
+.TP
+.BR CLIENT_MNT " (default: " /mnt/lustre )
+Where clients mount it.
+.TP
+.BR SD_DEV " (default: " /dev/mmcblk0 ", " \fIformat\fR )
+The SD card as the nodes see it.
+.TP
+.BR SWAP_SIZE " (default: " 1GiB ", " \fIformat\fR )
+Swap partition on every card.
+.TP
+.BR MGT_SIZE " (default: " 1GiB ", " \fIformat\fR )
+Size of the MGS's target.
+.TP
+.BR MDT_SIZE " (default: " 8GiB ", " \fIformat\fR )
+Size of each MDT.
+Both MDS cards hold both MDTs.
+.TP
+.BR OST_SIZE " (default: " 50GiB ", " \fIformat\fR )
+Size of each OST.
+Both OSS cards hold both OSTs, so a card needs twice this, plus the swap
+partition.
+.SS Failover
+.TP
+.BR UMOUNT_TIMEOUT " (default: " 120 )
+Seconds a node may take to unmount its targets before it is powered off.
+.TP
+.BR SYNC_TIMEOUT " (default: " 1200 )
+Seconds to wait for a node's mirrors to finish resynchronising before
+giving up on moving targets to it.
+.SS Clients
+.TP
+.BR NCLIENTS " (default: " 8 )
+Number of client virtual machines.
+.TP
+.BR VM_MEM " (default: " 512 )
+Memory of each client, in MB.
+Eight clients of 512 MB fit a controller with 8 GB.
+.TP
+.BR VM_CPUS " (default: " 1 )
+Virtual CPUs of each client.
+.TP
+.BR VM_BRIDGE " (default: " brint )
+Bridge on the controller the clients are attached to.
+.TP
+.BR VM_IPBASE " (default: " 100 )
+Client
+.I N
+is at
+.IR NODE_NET .( VM_IPBASE + N ).
+This is fixed in the client image when it is built; changing it here alone
+breaks the clients' network.
+.SS Throttle
+.TP
+.BR THROTTLE_BAND " (default: " 20 )
+Band, in MB/s, that
+.B lustre-cluster throttle on
+divides between the OSTs when it is given no figure.
+.SS Updates
+.TP
+.BR UPDATE_REPO " (default: " https://github.com/ablagodarenko/lustre-clusterhat.git )
+Repository
+.B lustre-cluster update
+installs from.
+.TP
+.BR UPDATE_REF " (default: " main )
+Branch, tag or commit it installs when given none.
+.SS Paths
+.TP
+.BR STATE " (default: " /var/lib/lustre-clusterhat )
+Where the node root template, the client image and run-time state live.
+.TP
+.BR NFSROOT " (default: " /var/lib/clusterctrl/nfs )
+Where the nodes' root file systems are exported from.
+.TP
+.BR SSH_KEY " (default: " /root/.ssh/lustre-clusterhat )
+Private key the controller uses for nodes and clients.
+.SH EXAMPLES
+Four clients with more memory each, and a quicker verdict on a node that
+will not unmount:
+.PP
+.RS
+.nf
+NCLIENTS=4
+VM_MEM=1024
+UMOUNT_TIMEOUT=60
+.fi
+.RE
+.PP
+Larger OSTs for 256 GB cards in the OSS nodes, set before formatting:
+.PP
+.RS
+.nf
+OST_SIZE=110GiB
+.fi
+.RE
+.SH SEE ALSO
+.BR lustre-cluster (8)

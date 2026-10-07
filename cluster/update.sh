@@ -12,7 +12,8 @@
 #                       systemctl disable --now lustre-clusterhat-update.timer
 #
 # This updates what the repository's cluster/ and files/ directories hold:
-# the lustre-cluster commands, their systemd units and module options.  It
+# the lustre-cluster commands, their systemd units, module options and
+# manual pages.  It
 # does not touch a running cluster, and it does not change Lustre itself,
 # the kernels, the node root template or the client VM image: those are
 # built into the image.  The controller needs to reach the repository.
@@ -86,6 +87,10 @@ do_update() {
 	fi
 	[ ! -e "$REPO_DIR/files/usb-storage-rpiboot.conf" ] ||
 		install -m 644 "$REPO_DIR/files/usb-storage-rpiboot.conf" /etc/modprobe.d/
+	for f in "$REPO_DIR"/man/*.[1-9]; do
+		[ -e "$f" ] || continue
+		install -D -m 644 "$f" "/usr/local/share/man/man${f##*.}/${f##*/}"
+	done
 
 	echo "was: $(installed)"
 	git -C "$REPO_DIR" log -1 --format='%h %ad %s' --date=short "$want" > "$REV_FILE"

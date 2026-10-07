@@ -1,0 +1,344 @@
+.TH LUSTRE-CLUSTER 8 "2026-10-07" "lustre-clusterhat" "System Administration"
+.SH NAME
+lustre-cluster \- run a Lustre file system on a Raspberry Pi ClusterHAT
+.SH SYNOPSIS
+.B lustre-cluster
+.I command
+.RI [ subcommand ]
+.RI [ argument ...]
+.SH DESCRIPTION
+.B lustre-cluster
+controls a complete small Lustre installation from the controller of a
+ClusterHAT: a Raspberry Pi 4 carrying four Pi Zero 2 W nodes.
+.PP
+The four nodes are the Lustre servers.
+They boot over USB from a root file system exported by the controller, and
+their SD cards hold nothing but Lustre targets.
+The clients are virtual machines on the controller.
+.PP
+.TS
+tab(|);
+lb lb lb
+l l l.
+Node|Role|Targets at home
+p1|MGS and MDS|MGS, MDT0000
+p2|MDS|MDT0001
+p3|OSS|OST0000
+p4|OSS|OST0001
+.TE
+.PP
+Both MDS nodes and both OSS nodes are active.
+The nodes share no storage, so every target is a DRBD device mirrored
+between the SD cards of its pair (p1 with p2, p3 with p4), and either node
+of a pair can serve a target.
+A target is
+.I at home
+on the node that serves it normally, and
+.I active
+on the node that serves it now.
+.PP
+All commands run on the controller.
+.B lustre-cluster
+re-executes itself with
+.BR sudo (8)
+when it is not started as root.
+.SH COMMANDS
+.SS Setting up
+.TP
+.B init
+Create the SSH key the controller uses to reach nodes and clients, and
+install its public half in the node root template and the client image.
+This runs once on the first boot of a freshly flashed controller, and is
+safe to run again while no client is running.
+.TP
+.BR "nodes deploy " [ \fIN\fR ...]
+Power the nodes off, replace each one's root file system with a copy of the
+template, and power them on one at a time.
+Without arguments all four nodes are deployed; this takes about half an
+hour.
+Lustre targets on the SD cards are not touched.
+.TP
+.B servers format
+.B Destroy everything on the nodes' SD cards.
+Partition them, set up the DRBD mirrors, and create the MGS, two MDTs and
+two OSTs.
+Needed once, before the first
+.BR up ,
+and afterwards only to start again with an empty file system.
+.SS Starting and stopping
+.TP
+.B up
+Power the nodes on, mount every target, start the client virtual machines
+and mount the file system in them.
+.TP
+.B down
+Stop the clients, unmount the targets and power the nodes off.
+Run this before powering the controller off.
+.TP
+.BR "nodes on " [ \fIN\fR ...]
+.TQ
+.BR "nodes off " [ \fIN\fR ...]
+Power nodes on, one at a time with a pause between them, or off.
+A node that does not appear after being powered on is power cycled once.
+.TP
+.B nodes status
+Show each node's power state, kernel and uptime.
+.TP
+.B servers start
+Mount every target on the node where it is active, or on its home node if
+it is active nowhere.
+.TP
+.BR "servers stop " [ poweroff ]
+Unmount every target.
+A node that does not finish within
+.B UMOUNT_TIMEOUT
+seconds is power cycled, or with
+.B poweroff
+left switched off.
+.TP
+.B servers status
+Show, for each target, its home node, the node it is active on, whether it
+is mounted, and the state of its mirror; then the memory in use on each
+node.
+A mirror state of
+.B UpToDate/UpToDate Connected
+means both copies are complete.
+.BR Inconsistent " or " SyncTarget
+means one copy is being resynchronised, which happens after a node was
+powered off.
+.TP
+.BR "clients start " [ \fIN\fR ...]
+.TQ
+.BR "clients stop " [ \fIN\fR ...]
+Start or shut down client virtual machines; all of them without arguments.
+Every start gives a client a fresh root file system.
+.TP
+.BR "clients mount " [ \fIN\fR ...]
+.TQ
+.BR "clients umount " [ \fIN\fR ...]
+Mount or unmount the Lustre file system in the clients.
+.TP
+.B clients status
+List the clients, their addresses and their Lustre mounts.
+.SS Failover
+Nothing moves unless it is asked to: there is no cluster manager on the
+nodes.
+.TP
+.BR "servers failover " \fIN\fR " " [ hard ]
+Move every target that node
+.I N
+is serving to its partner.
+The targets are unmounted on
+.I N
+and mounted on the partner.
+If
+.I N
+does not release them within
+.B UMOUNT_TIMEOUT
+seconds, or with
+.BR hard ,
+it is powered off first, as if it had crashed, and powered back on
+afterwards to rejoin its mirrors as the standby.
+.TP
+.B servers failback
+Move every target back to its home node.
+If a node will not release a target it is power cycled; while it is down
+its partner keeps only the targets that are at home there, and once it is
+back and resynchronised it mounts its own.
+.PP
+A move first waits, for up to
+.B SYNC_TIMEOUT
+seconds, until the partner holds complete copies, and refuses to do
+anything if the partner cannot be reached.
+Clients block while a target is moving and recover when it is mounted
+again.
+.SS Experiments
+.TP
+.BR "throttle on " [ \fIB\fR ]
+Limit the disk I/O of the OSTs to a band of
+.I B
+MB/s (default
+.BR THROTTLE_BAND ),
+divided evenly between them: with two OSTs each may read
+.IR B /2
+and write
+.IR B /2
+MB/s.
+This makes storage rather than the network the bottleneck, so the effect
+of striping a file over several OSTs can be seen.
+.TP
+.B throttle off
+Remove the limit.
+.TP
+.B throttle status
+Show whether the limit is on and what is in force on each OSS node.
+.PP
+The limit is Lustre's own: the TBF policy of the network request scheduler
+on the OSS I/O service, with one token bucket for reads and one for
+writes.
+While it is on, clients send 1 MB bulk requests, so one request is one
+megabyte of streaming I/O; small requests cost a whole token each, so
+small-file I/O is limited harder than the figure suggests.
+The limit applies to an OSS node: a node serving both OSTs after a failover
+gets the whole band.
+It is applied again after targets or clients move.
+.TP
+.B benchmark disk
+Measure sequential write and read speed of each node's SD card with direct
+I/O on its swap partition; no target is touched.
+.TP
+.B benchmark net
+Measure TCP throughput between a client and each node with
+.BR iperf3 (1).
+.TP
+.B benchmark io
+Measure Lustre write and read throughput with 1, 2, ... up to all clients,
+each writing and then reading one file.
+.TP
+.B benchmark all
+All three.
+.PP
+The amount of data per node or per client is set with
+.B BENCH_MB
+in the environment (default 256).
+.SS Updating
+.TP
+.BR "update " [ \fIREF\fR ]
+Install the
+.B lustre-cluster
+scripts, their systemd units and these manual pages from branch, tag or
+commit
+.I REF
+of the repository
+.B UPDATE_REPO
+(default: branch
+.BR UPDATE_REF ).
+The previous scripts are kept in
+.IR /opt/lustre-clusterhat.old .
+A running cluster is not affected.
+Lustre itself, the kernels, the node root template and the client image
+are not changed: they are built into the controller image.
+.TP
+.B update status
+Show the installed revision and the repository's.
+.TP
+.B update auto
+Install
+.B UPDATE_REF
+only if it differs from what is installed.
+This is what
+.B lustre-clusterhat-update.timer
+runs, a few minutes after boot and once a day, when it is enabled.
+.SH EXIT STATUS
+Zero on success.
+Non-zero if a step failed or was refused; the message says which.
+.B servers failover
+and
+.B servers failback
+succeed when the targets end up where they were asked to go, whether or not
+a node had to be powered off on the way.
+.SH FILES
+.TP
+.I /etc/lustre-clusterhat.conf
+Settings; see
+.BR lustre-clusterhat.conf (5).
+.TP
+.I /etc/lustre-clusterhat-release
+What the controller image was built from: Lustre and e2fsprogs versions,
+kernel releases, date.
+.TP
+.I /opt/lustre-clusterhat/
+The scripts behind the commands.
+.TP
+.I /var/lib/lustre-clusterhat/node-rootfs/
+Template of the nodes' root file system.
+.TP
+.I /var/lib/lustre-clusterhat/vm/
+Root image, kernel and initrd of the clients, their overlays, console logs
+.RI ( client N .log)
+and process IDs.
+.TP
+.I /var/lib/clusterctrl/nfs/p1 " ... " p4
+The nodes' root file systems, exported over NFS.
+.TP
+.I /root/.ssh/lustre-clusterhat
+The controller's key for nodes and clients.
+.SH EXAMPLES
+First use of a freshly flashed controller:
+.PP
+.RS
+.nf
+lustre-cluster nodes deploy
+lustre-cluster servers format
+lustre-cluster up
+.fi
+.RE
+.PP
+Log in to the first client and look at the file system:
+.PP
+.RS
+.nf
+sudo ssh \-i /root/.ssh/lustre-clusterhat root@172.19.180.101
+lfs df \-h /mnt/lustre
+.fi
+.RE
+.PP
+Move the MGS and MDT0000 to p2, check, and bring them back:
+.PP
+.RS
+.nf
+lustre-cluster servers failover 1
+lustre-cluster servers status
+lustre-cluster servers failback
+.fi
+.RE
+.PP
+See what striping does when each OST is held to 4 MB/s:
+.PP
+.RS
+.nf
+lustre-cluster throttle on 8
+# on a client:
+lfs setstripe \-c 1 one; lfs setstripe \-c 2 \-S 1M two
+dd if=/dev/zero of=one bs=1M count=96 oflag=direct
+dd if=/dev/zero of=two bs=1M count=96 oflag=direct
+lustre-cluster throttle off
+.fi
+.RE
+.SH NOTES
+.SS SD cards and USB boot
+A Pi Zero's boot ROM tries the SD card first and falls back to USB boot
+only if the card has a FAT partition without boot files, or if there is no
+card.
+A card with no FAT partition at all, exFAT included, hangs the node.
+.B servers format
+keeps a small empty FAT partition at the start of every card for this
+reason; a new card must be formatted FAT, with no files on it, before its
+node will boot.
+.SS Moving the MGS and MDTs
+Unmounting the MGS, and often an MDT, does not complete with the Lustre
+version in the image: it waits for exports that are never released.
+Moving these targets therefore goes through a power cycle of the node they
+leave, and takes four to seven minutes.
+OST moves are clean and take seconds.
+.SS Memory
+The nodes have 512 MB of RAM, about 460 MB of it usable.
+A node carrying its partner's targets as well as its own runs close to
+that.
+.SS Throughput
+All four nodes share one USB 2.0 bus, which carries about 25 MB/s in total
+for client traffic and mirroring together.
+Because every write is also sent to the partner node, a single client
+writes at about 6 MB/s.
+.SH SEE ALSO
+.BR lustre-clusterhat.conf (5),
+.BR clusterctrl (8),
+.BR drbdadm (8),
+.BR lfs (1),
+.BR lctl (8),
+.BR mount.lustre (8)
+.PP
+.UR https://github.com/ablagodarenko/lustre-clusterhat
+The lustre-clusterhat repository
+.UE ,
+with the image build scripts.

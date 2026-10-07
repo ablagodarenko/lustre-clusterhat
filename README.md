@@ -187,6 +187,9 @@ limiter (the NRS TBF policy on the OSS I/O service) with clients switched to
 1 MB requests: accurate for streaming I/O, harsher on small files, and per
 OSS node - a node serving both OSTs after a failover gets the whole band.
 
+`man lustre-cluster` and `man lustre-clusterhat.conf` on the controller
+describe every command and setting.
+
 Clients are `client1`..`client8` at 172.19.180.101-108 with the file system
 on `/mnt/lustre`; from the controller, `ssh -i /root/.ssh/lustre-clusterhat
 root@172.19.180.101`. Runtime settings (number and size of clients, file
@@ -242,6 +245,7 @@ build.sh, lib.sh, config.sh   driver, helpers, build settings
 stages/                       the build, in order
 cluster/                      what runs on the controller (lustre-cluster)
 files/                        systemd units and module options for the image
+man/                          lustre-cluster(8), lustre-clusterhat.conf(5)
 ```
 
 ## Status

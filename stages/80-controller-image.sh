@@ -49,6 +49,9 @@ cp --sparse=always "$VMOUT"/base.img "$VMOUT"/vmlinuz "$VMOUT"/initrd.img "$stat
 install -d "$mnt/opt/lustre-clusterhat"
 install -m 755 "$TOP"/cluster/*.sh "$TOP/cluster/lustre-cluster" "$mnt/opt/lustre-clusterhat/"
 ln -sf /opt/lustre-clusterhat/lustre-cluster "$mnt/usr/local/sbin/lustre-cluster"
+for f in "$TOP"/man/*.[1-9]; do
+	install -D -m 644 "$f" "$mnt/usr/local/share/man/man${f##*.}/${f##*/}"
+done
 
 install -m 644 "$TOP"/files/*.service "$TOP"/files/*.timer "$mnt/etc/systemd/system/"
 if [ "$AUTO_UPDATE" = yes ]; then
