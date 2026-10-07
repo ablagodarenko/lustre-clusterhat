@@ -263,35 +263,34 @@ dd if=two of=/dev/null bs=1M iflag=direct     # about 8 MB/s
 sudo lustre-cluster throttle off
 ```
 
-**Watch a failover from the client's side.** Start something that keeps
-touching the file system, then move a server on the controller. The loop
-pauses while the target is away and carries on once it is back; nothing
-fails:
+**Watch a failover from the client's side.** Start something that needs
+both a metadata server and the OSTs every second, then move a server on the
+controller. This loop creates a new file each second in a directory on
+MDT0000. It stops while a target it needs is away and carries on once that
+is back; nothing fails:
 
 ```sh
 # on a client
-while true; do date >> /mnt/lustre/a/heartbeat; tail -1 /mnt/lustre/a/heartbeat; sleep 1; done
+lfs mkdir -i 0 /mnt/lustre/hb
+while true; do t=$(date +%T); date > /mnt/lustre/hb/$t; echo $t; sleep 1; done
 
-# on the controller: OST0000 to p4 (seconds), or MGS and MDT0000 to p2 (minutes)
-sudo lustre-cluster servers failover 3
-sudo lustre-cluster servers failover 1
+# on the controller
+sudo lustre-cluster servers failover 3     # OST0000 to p4
+sudo lustre-cluster servers failback
+sudo lustre-cluster servers failover 1     # MGS and MDT0000 to p2
 sudo lustre-cluster servers failback
 ```
+
+Measured with this loop: each OSS move stopped it for about 11 seconds, the
+MDS failover for about 3 minutes, and the MDS failback for about 10
+minutes. (A loop that keeps appending to one already open file hardly
+notices an MDS move: the client has the file cached and only talks to the
+OSTs.)
 
 Which server the client is talking to for MDT0000, before and after:
 
 ```sh
 lctl get_param mdc.*MDT0000*.import | grep -E 'current_connection|state:'
-```
-
-**Buffered writes are slow by default.** A client counts pages the server has
-not committed yet against its dirty-page limit, and these clients have
-little memory, so a plain `dd` or `cp` crawls at 2-3 MB/s. Direct I/O
-(`oflag=direct`, as above) avoids it; so does turning the accounting off,
-until the client is restarted:
-
-```sh
-lctl set_param llite.*.unstable_stats=0
 ```
 
 **Measure without the cache.** To read from the servers rather than from the
@@ -333,15 +332,14 @@ the defaults are in `cluster/config.sh`.
   MDT) hangs on this Lustre version, waiting for exports that are never
   released. After `UMOUNT_TIMEOUT` seconds the node is powered off through
   the ClusterHAT, its partner takes over, and it rejoins as the standby.
-  Expect four to six minutes for an MDS failover or failback, during which
-  clients block and then recover. OSS moves are clean and take seconds.
+  An MDS failover takes about four minutes and a failback up to ten;
+  clients that need the moving targets block for most of that and then
+  recover. OSS moves are clean and take seconds.
 - **Mirroring costs throughput and space.** Every write to a target is also
   sent to its partner over the USB bus all four Zeros share, and each OSS
-  card holds both OSTs: about 6 MB/s for a single writer and 2 x 50 GB.
+  card holds both OSTs: 6 to 9 MB/s for a single writer and 2 x 50 GB.
 - **Throughput.** All four Zeros share one USB 2.0 bus that carries about
-  25 MB/s in total, for client traffic and mirroring together. With
-  buffered I/O a single client writes far below even that unless
-  `llite.*.unstable_stats` is set to 0 in the VM.
+  25 MB/s in total, for client traffic and mirroring together.
 - **Memory.** The Zeros have 512 MB. The node root drops the KMS overlay and
   sets `gpu_mem=16`; with the defaults the MDS fails with -ENOMEM.
 - **Do not upgrade the node or VM kernel.** The Lustre modules only load on

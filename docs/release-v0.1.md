@@ -55,9 +55,10 @@ named above from the Raspberry Pi and Debian archives; this repository at
 ## Known limitations
 
 - Moving the MGS or an MDT to the other node power-cycles the node it
-  leaves, because the unmount hangs on this Lustre version. Expect four to
-  seven minutes. OSS moves take seconds.
-- Throughput is low: about 6 MB/s for a single writer. Every write is
+  leaves, because the unmount hangs on this Lustre version. Expect about
+  four minutes for a failover and up to ten for a failback. OSS moves take
+  seconds.
+- Throughput is low: 6 to 9 MB/s for a single writer. Every write is
   mirrored to the partner node over the one USB bus the Zeros share.
 - 97 GB usable with 128 GB cards in the OSS nodes.
 - Tested on a Pi 4 with a ClusterHAT v2.5 only.

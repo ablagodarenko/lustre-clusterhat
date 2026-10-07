@@ -319,7 +319,8 @@ node will boot.
 Unmounting the MGS, and often an MDT, does not complete with the Lustre
 version in the image: it waits for exports that are never released.
 Moving these targets therefore goes through a power cycle of the node they
-leave, and takes four to seven minutes.
+leave: about four minutes for a failover and up to ten for a failback,
+during most of which clients that need those targets are blocked.
 OST moves are clean and take seconds.
 .SS Memory
 The nodes have 512 MB of RAM, about 460 MB of it usable.
@@ -329,7 +330,7 @@ that.
 All four nodes share one USB 2.0 bus, which carries about 25 MB/s in total
 for client traffic and mirroring together.
 Because every write is also sent to the partner node, a single client
-writes at about 6 MB/s.
+writes at 6 to 9 MB/s.
 .SH SEE ALSO
 .BR lustre-clusterhat.conf (5),
 .BR clusterctrl (8),
