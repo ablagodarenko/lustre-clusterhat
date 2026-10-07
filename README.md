@@ -17,7 +17,7 @@ object storage servers, failover between them, and eight clients. Flash the
 card, run three commands, and you have a Lustre installation on your desk to
 learn on, break and benchmark.
 
-https://github.com/ablagodarenko/lustre-clusterhat/blob/main/docs/cluster.mp4
+https://github.com/user-attachments/assets/30a18f1f-788f-4b67-bd12-7c00b249ad6e
 
 ## What Lustre is made of, and where it runs here
 
