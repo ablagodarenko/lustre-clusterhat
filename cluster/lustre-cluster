@@ -11,6 +11,7 @@
 #                                            share a disk I/O band between the OSTs
 #   lustre-cluster clients start|mount|umount|stop|status
 #   lustre-cluster benchmark disk|net|io|all
+#   lustre-cluster update [REF]|status       newer lustre-cluster scripts from the repository
 #   lustre-cluster up                        nodes on, servers start, clients start + mount
 #   lustre-cluster down                      clients stop, servers stop, nodes off
 #
@@ -23,12 +24,12 @@ D=$(dirname "$(readlink -f "$0")")
 cmd=$1; shift || true
 case "$cmd" in
 init)       exec "$D/init.sh" "$@" ;;
-nodes|servers|clients|benchmark|throttle)
+nodes|servers|clients|benchmark|throttle|update)
             exec "$D/$cmd.sh" "$@" ;;
 up)         "$D/nodes.sh" on && "$D/servers.sh" start &&
             "$D/clients.sh" start && "$D/clients.sh" mount ;;
 down)       "$D/clients.sh" stop
             "$D/servers.sh" stop poweroff
             "$D/nodes.sh" off ;;
-*)          sed -n '3,18p' "$0"; exit 1 ;;
+*)          sed -n '3,19p' "$0"; exit 1 ;;
 esac

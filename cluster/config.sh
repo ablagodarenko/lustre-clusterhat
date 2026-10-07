@@ -12,6 +12,10 @@ NODES=${NODES:-"1 2 3 4"}
 # address of node pN on the controller-internal network is NODE_NET.N
 NODE_NET=${NODE_NET:-172.19.180}
 
+# Where "lustre-cluster update" gets newer scripts from
+UPDATE_REPO=${UPDATE_REPO:-https://github.com/ablagodarenko/lustre-clusterhat.git}
+UPDATE_REF=${UPDATE_REF:-main}
+
 # Client VMs: Debian arm64 guests under KVM on the controller
 VMDIR=${VMDIR:-$STATE/vm}
 NCLIENTS=${NCLIENTS:-8}

@@ -1,4 +1,4 @@
-# lustre-clusterhat-image
+# lustre-clusterhat
 
 Builds a Raspberry Pi SD-card image that turns a [ClusterHAT](https://clusterhat.com/)
 into a complete small Lustre cluster:
@@ -35,7 +35,7 @@ On an aarch64 Debian or Raspberry Pi OS host (a Pi 4 works), as root, with
 about 25 GB free:
 
 ```sh
-git clone <this repository> && cd lustre-clusterhat-image
+git clone https://github.com/ablagodarenko/lustre-clusterhat.git && cd lustre-clusterhat
 sudo ./build.sh deps      # debootstrap, git, curl, xz, rsync, fdisk
 sudo ./build.sh           # all stages; several hours on a Pi 4
 ```
@@ -86,6 +86,21 @@ lustre-cluster benchmark all
 lustre-cluster down                   # stop clients and servers, power nodes off
 lustre-cluster up
 ```
+
+To pick up newer `lustre-cluster` scripts without reflashing:
+
+```sh
+lustre-cluster update status          # installed revision, and the repository's
+lustre-cluster update                 # install the scripts from the main branch
+lustre-cluster update v0.2            # or from a tag, branch or commit
+```
+
+`update` replaces the commands in `/opt/lustre-clusterhat` and their systemd
+units from this repository (the previous ones are kept in
+`/opt/lustre-clusterhat.old`). It does not touch a running cluster, and it
+does not change Lustre, the kernels, the node root or the client image,
+which are built into the image. The controller needs internet access; set
+`UPDATE_REPO` in `/etc/lustre-clusterhat.conf` to use a fork.
 
 `throttle on B` divides a band of B MB/s evenly between the OSTs, for
 reads and for writes, so that storage rather than the network is the
@@ -165,7 +180,8 @@ kernel 6.1.0-50-cloud-arm64:
   `failover` and `failback` of each MDS node and of the OSS nodes with a
   client reading and writing after every move, and `throttle`.
 
-Not tested: an image built with the current layout booted from a card; the
+Not tested: `lustre-cluster update`; an image built with the current
+layout booted from a card; the
 default account and the SSH and serial settings added after the booted
 image; a build with the default (newest) node kernel; a Pi 5 controller;
 load beyond single-client streaming I/O with the current layout.

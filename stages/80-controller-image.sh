@@ -36,7 +36,7 @@ track_mount "${loop}p1" "$mnt/boot/firmware"
 chroot_open "$mnt"
 in_root "$mnt" apt-get update
 in_root "$mnt" apt-get install -y --no-install-recommends \
-	qemu-system-arm qemu-utils rsync openssh-client iperf3
+	qemu-system-arm qemu-utils rsync openssh-client iperf3 git ca-certificates
 in_root "$mnt" apt-get clean
 
 state=$mnt/var/lib/lustre-clusterhat
@@ -89,6 +89,7 @@ NODE_KERNEL=$krel
 CLIENT_KERNEL=$(cat "$PKGS/client/KERNEL_RELEASE")
 BASE_IMAGE=${CTRL_IMAGE_URL##*/}
 DEFAULT_USER=$DEFAULT_USER
+SCRIPTS=$(git -C "$TOP" log -1 --format='%h %ad' --date=short 2>/dev/null || echo unknown)
 BUILT=$(date -u +%Y-%m-%dT%H:%MZ)
 E
 
