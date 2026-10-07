@@ -11,7 +11,7 @@ VMs.
 
 `lustre-2_17_59-1-g4a7bddaf15-2025-11-24-1-bookworm-ClusterCTRL-arm64-lite-CBRIDGE.img.xz` (1.1 GB, 7.1 GB unpacked)
 
-    sha256  3a193b48f4d8c8a095b20e8ed9a814d27b2d97163c9dff9aa7b4d0cb24113d3c
+    sha256  3083753073d77ea820711feda6b4c6df6eb6033c4051416240deee7011b50c91
 
 Flash it to a 16 GB or larger card with Raspberry Pi Imager ("Use custom");
 Imager reads the `.xz` directly. Leave Imager's own user and network settings
@@ -31,11 +31,10 @@ unless it stays on a network you trust. Then:
 Each Zero needs an SD card formatted FAT with no files on it, or it will not
 boot from USB.
 
-This image was built before `lustre-cluster update` existed. To get it, and
-any later fixes, without reflashing:
+`man lustre-cluster` on the controller describes every command. Later fixes
+to the scripts can be installed without reflashing:
 
-    sudo git clone https://github.com/ablagodarenko/lustre-clusterhat.git /var/lib/lustre-clusterhat/repo
-    sudo /var/lib/lustre-clusterhat/repo/cluster/update.sh
+    sudo lustre-cluster update
 
 ## What is inside
 
