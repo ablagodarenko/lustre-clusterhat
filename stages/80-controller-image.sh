@@ -50,7 +50,10 @@ install -d "$mnt/opt/lustre-clusterhat"
 install -m 755 "$TOP"/cluster/*.sh "$TOP/cluster/lustre-cluster" "$mnt/opt/lustre-clusterhat/"
 ln -sf /opt/lustre-clusterhat/lustre-cluster "$mnt/usr/local/sbin/lustre-cluster"
 
-install -m 644 "$TOP"/files/*.service "$mnt/etc/systemd/system/"
+install -m 644 "$TOP"/files/*.service "$TOP"/files/*.timer "$mnt/etc/systemd/system/"
+if [ "$AUTO_UPDATE" = yes ]; then
+	in_root "$mnt" systemctl enable lustre-clusterhat-update.timer
+fi
 in_root "$mnt" systemctl enable lustre-clusterhat-init.service \
 	lustre-clusterhat-fan.service
 
@@ -89,6 +92,7 @@ NODE_KERNEL=$krel
 CLIENT_KERNEL=$(cat "$PKGS/client/KERNEL_RELEASE")
 BASE_IMAGE=${CTRL_IMAGE_URL##*/}
 DEFAULT_USER=$DEFAULT_USER
+AUTO_UPDATE=$AUTO_UPDATE
 SCRIPTS=$(git -C "$TOP" log -1 --format='%h %ad' --date=short 2>/dev/null || echo unknown)
 BUILT=$(date -u +%Y-%m-%dT%H:%MZ)
 E

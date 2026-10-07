@@ -6,6 +6,10 @@
 #   update.sh [REF]     install the scripts from branch, tag or commit REF
 #                       (default: $UPDATE_REF)
 #   update.sh status    show what is installed and what the repository has
+#   update.sh auto      install $UPDATE_REF only if it differs from what is
+#                       installed; what lustre-clusterhat-update.timer runs
+#                       after boot and once a day.  To stop that:
+#                       systemctl disable --now lustre-clusterhat-update.timer
 #
 # This updates what the repository's cluster/ and files/ directories hold:
 # the lustre-cluster commands, their systemd units and module options.  It
@@ -20,6 +24,7 @@ set -e
 DEST=/opt/lustre-clusterhat
 REPO_DIR=$STATE/repo
 REV_FILE=$STATE/scripts-revision
+COMMIT_FILE=$STATE/scripts-commit
 
 installed() { cat "$REV_FILE" 2>/dev/null || echo "as shipped in the image"; }
 
@@ -74,6 +79,9 @@ do_update() {
 
 	if ls "$REPO_DIR"/files/*.service >/dev/null 2>&1; then
 		install -m 644 "$REPO_DIR"/files/*.service /etc/systemd/system/
+		for f in "$REPO_DIR"/files/*.timer; do
+			[ ! -e "$f" ] || install -m 644 "$f" /etc/systemd/system/
+		done
 		systemctl daemon-reload
 	fi
 	[ ! -e "$REPO_DIR/files/usb-storage-rpiboot.conf" ] ||
@@ -81,15 +89,28 @@ do_update() {
 
 	echo "was: $(installed)"
 	git -C "$REPO_DIR" log -1 --format='%h %ad %s' --date=short "$want" > "$REV_FILE"
+	echo "$want" > "$COMMIT_FILE"
 	echo "now: $(installed)"
 	echo "The previous scripts are in $DEST.old.  A running cluster is not"
 	echo "affected until the next lustre-cluster command."
+}
+
+do_auto() {
+	local want
+	fetch_repo
+	want=$(resolve "$UPDATE_REF") || { echo "no '$UPDATE_REF' in $UPDATE_REPO"; exit 1; }
+	if [ "$(cat "$COMMIT_FILE" 2>/dev/null)" = "$want" ]; then
+		echo "up to date: $(installed)"
+	else
+		do_update "$UPDATE_REF"
+	fi
 }
 
 # all of the above is read before anything runs, so replacing this very
 # file during an update cannot trip the shell up
 case "$1" in
 status) do_status; exit ;;
--h|--help|help) sed -n '3,15p' "$0"; exit ;;
+auto)   do_auto; exit ;;
+-h|--help|help) sed -n '3,19p' "$0"; exit ;;
 *)      do_update "$1"; exit ;;
 esac

@@ -123,6 +123,7 @@ NODE_KREL=6.12.109+rpt-rpi-v8       # pin the node kernel
 COMPRESS=no
 SERIAL_AUTOLOGIN=yes                # passwordless login on the serial console
 DEFAULT_USER=                       # no built-in account: prompt on first boot
+AUTO_UPDATE=no                      # do not update the scripts automatically
 ```
 
 Lustre must have an ldiskfs patch series for the node kernel; the build
@@ -159,7 +160,11 @@ lustre-cluster down                   # stop clients and servers, power nodes of
 lustre-cluster up
 ```
 
-To pick up newer `lustre-cluster` scripts without reflashing:
+The controller keeps its `lustre-cluster` scripts current by itself: a few
+minutes after boot and once a day it installs what is on this repository's
+`main` branch, if that is newer (`systemctl disable --now
+lustre-clusterhat-update.timer` turns this off, `journalctl -u
+lustre-clusterhat-update` shows what it did). By hand:
 
 ```sh
 lustre-cluster update status          # installed revision, and the repository's
