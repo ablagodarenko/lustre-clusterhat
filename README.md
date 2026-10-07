@@ -1,7 +1,68 @@
 # lustre-clusterhat
 
-Builds a Raspberry Pi SD-card image that turns a [ClusterHAT](https://clusterhat.com/)
-into a complete small Lustre cluster:
+**A complete Lustre file system on a Raspberry Pi cluster that fits in your hand.**
+
+![The cluster: a Raspberry Pi 4 with a ClusterHAT and four Pi Zero 2 W in an acrylic case](docs/cluster.jpg)
+
+[Lustre](https://www.lustre.org/) is an open-source parallel file system. It
+stores the data of many of the world's largest supercomputers: thousands of
+compute nodes read and write one shared file system at the same time, served
+by hundreds of storage servers, with capacities of hundreds of petabytes.
+
+Running it has normally meant racks of servers, or at least a handful of
+virtual machines. This project builds one SD-card image that turns a
+Raspberry Pi 4 with a [ClusterHAT](https://clusterhat.com/) and four
+Pi Zero 2 W into a real, working Lustre cluster: two metadata servers, two
+object storage servers, failover between them, and eight clients. Flash the
+card, run three commands, and you have a Lustre installation on your desk to
+learn on, break and benchmark.
+
+[Video of the cluster running (27 s, 10 MB)](docs/cluster.mp4)
+
+## What Lustre is made of, and where it runs here
+
+A Lustre file system separates *what files exist* from *what is in them*:
+
+- The **MGS** (management server) holds the configuration: every server and
+  client asks it who else is part of the file system.
+- An **MDS** (metadata server) serves names, directories, permissions and
+  file layouts from its **MDT** (metadata target). With several MDTs the
+  namespace is spread over them.
+- An **OSS** (object storage server) serves file contents from its **OSTs**
+  (object storage targets). A file can be striped over several OSTs, and
+  clients read and write them in parallel.
+- A **client** asks an MDS where a file's data is, then talks to the OSSs
+  directly. The data never passes through the metadata servers.
+
+```mermaid
+flowchart TB
+    subgraph ctrl["Controller: Raspberry Pi 4"]
+        direction LR
+        c1["client1"] ~~~ c2["client2"] ~~~ c3["..."] ~~~ c8["client8"]
+    end
+
+    ctrl -- "metadata: open, mkdir, ls" --> mds
+    ctrl == "file data, in parallel" ==> oss
+
+    subgraph mds["Metadata servers"]
+        direction LR
+        p1["p1 (Pi Zero 2 W)<br/>MGS<br/>MDT0000"]
+        p2["p2 (Pi Zero 2 W)<br/>MDT0001"]
+        p1 <-. "DRBD mirror<br/>failover" .-> p2
+    end
+
+    subgraph oss["Object storage servers"]
+        direction LR
+        p3["p3 (Pi Zero 2 W)<br/>OST0000"]
+        p4["p4 (Pi Zero 2 W)<br/>OST0001"]
+        p3 <-. "DRBD mirror<br/>failover" .-> p4
+    end
+```
+
+The clients are virtual machines on the Pi 4; the four servers are the
+Pi Zeros on the ClusterHAT, with their SD cards as the storage. Everything
+talks over LNet, Lustre's network layer, on the USB links between the Pi 4
+and the Zeros.
 
 | Where | Role |
 |---|---|
