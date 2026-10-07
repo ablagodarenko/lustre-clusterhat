@@ -179,12 +179,14 @@ kernel 6.1.0-50-cloud-arm64:
   controller: `servers format`, `up`, directories spread over both MDTs,
   `failover` and `failback` of each MDS node and of the OSS nodes with a
   client reading and writing after every move, and `throttle`.
+- An image with the current layout flashed to a card and booted: the
+  unattended first boot created the default account with SSH enabled,
+  `nodes deploy` and `up` brought the cluster up on existing targets, and
+  `lustre-cluster update` installed newer scripts from this repository.
 
-Not tested: `lustre-cluster update`; an image built with the current
-layout booted from a card; the
-default account and the SSH and serial settings added after the booted
-image; a build with the default (newest) node kernel; a Pi 5 controller;
-load beyond single-client streaming I/O with the current layout.
+Not tested: a build with the default (newest) node kernel; a Pi 5
+controller; load beyond single-client streaming I/O with the current
+layout.
 
 Known rough edges of the base image: the bridged controller waits only two
 seconds for a DHCP lease and otherwise falls back to 172.19.181.254, in
