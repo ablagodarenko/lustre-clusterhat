@@ -19,6 +19,17 @@ learn on, break and benchmark.
 
 https://github.com/user-attachments/assets/30a18f1f-788f-4b67-bd12-7c00b249ad6e
 
+## Download
+
+**[Download the latest image](https://github.com/ablagodarenko/lustre-clusterhat/releases/latest)**
+(about 1.1 GB), then follow [Using the image](#using-the-image): flash it,
+boot the Pi 4, and run three commands. To build the image yourself instead,
+see [Building](#building).
+
+You need a Raspberry Pi 4 (8 GB for eight clients), a ClusterHAT v2 with four
+Pi Zero 2 W, a 16 GB or larger card for the Pi 4, and an SD card in each
+Zero.
+
 ## What Lustre is made of, and where it runs here
 
 A Lustre file system separates *what files exist* from *what is in them*:
